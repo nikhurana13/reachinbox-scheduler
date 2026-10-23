@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
-const BACKEND = process.env.BACKEND_URL || 'http://localhost:4000';
+const rawBackend = process.env.BACKEND_URL || 'http://localhost:4000';
+const BACKEND = rawBackend.replace(/\/+$/, '');
 
 module.exports = {
   reactStrictMode: true,

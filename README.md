@@ -99,3 +99,38 @@ Manual scenarios from the plan: kill the worker mid-run and restart; restart the
 - Fixed clock-hour windows can burst at an hour boundary; a rolling window would be smoother but more complex.
 - Delivery is **at-least-once with strong deduplication**. If a worker crashes after SMTP accepts a message but before the DB write, a retry could resend (mitigated by a deterministic Message-ID and short claim timeout). Exactly-once over SMTP is not achievable.
 - The UI follows the plan's screens; it was not pixel-matched to the Figma, which was not available.
+
+## Deployment Guide
+
+### 1. Deploying Frontend to Vercel
+
+The Next.js frontend is fully configured for deployment on **Vercel**:
+
+1. Log into [Vercel](https://vercel.com) and click **"Add New Project"**.
+2. Import your GitHub repository (`reachinbox-scheduler`).
+3. Under **Project Settings**:
+   - **Root Directory**: Click *Edit* and select `frontend`.
+   - **Framework Preset**: Next.js (automatically detected).
+4. Under **Environment Variables**, add:
+   - `BACKEND_URL`: `https://your-backend-api.com` *(URL of your deployed Express API)*
+   - `NEXT_PUBLIC_DEV_LOGIN`: `false` *(or `true` if you want dev-login button enabled)*
+5. Click **Deploy**.
+
+> Next.js will automatically proxy all `/api/*` traffic to `BACKEND_URL` on the server-side, eliminating cross-origin browser restrictions.
+
+### 2. Deploying Backend & Worker (Render / Railway / Fly.io / VPS)
+
+The backend consists of:
+- **Express API server** (`npm start` -> `node dist/server.js`)
+- **BullMQ background worker** (`npm run start:worker` -> `node dist/worker.js`)
+
+Because BullMQ requires a persistent event loop and background process to handle delayed queue jobs and rate limiting, the backend must be hosted as persistent services (e.g. on [Render](https://render.com), [Railway](https://railway.app), or [Fly.io](https://fly.io)) rather than serverless functions.
+
+**Required Cloud Services:**
+- **Postgres:** Hosted on Supabase, Neon, or Render PostgreSQL.
+- **Redis:** Hosted on Upstash, Redis Cloud, or Aiven (`appendonly yes`, `noeviction`).
+- **Elasticsearch:** Hosted on Elastic Cloud or Bonsai.
+
+**Backend Environment Variables:**
+- Set `FRONTEND_URL` to your Vercel deployment URL (e.g. `https://reachinbox-scheduler.vercel.app`).
+- Set `DATABASE_URL`, `REDIS_URL`, `ELASTICSEARCH_NODE`, `ENCRYPTION_KEY`, and `SESSION_SECRET`.
