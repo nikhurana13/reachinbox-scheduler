@@ -118,19 +118,40 @@ The Next.js frontend is fully configured for deployment on **Vercel**:
 
 > Next.js will automatically proxy all `/api/*` traffic to `BACKEND_URL` on the server-side, eliminating cross-origin browser restrictions.
 
-### 2. Deploying Backend & Worker (Render / Railway / Fly.io / VPS)
+### 2. Deploying Backend on Render
 
-The backend consists of:
-- **Express API server** (`npm start` -> `node dist/server.js`)
-- **BullMQ background worker** (`npm run start:worker` -> `node dist/worker.js`)
+The repository includes a ready-to-use **[render.yaml](file:///c:/Users/n3297/OneDrive/Desktop/reachinbox-scheduler/render.yaml)** Blueprint for 1-click deployment on Render:
 
-Because BullMQ requires a persistent event loop and background process to handle delayed queue jobs and rate limiting, the backend must be hosted as persistent services (e.g. on [Render](https://render.com), [Railway](https://railway.app), or [Fly.io](https://fly.io)) rather than serverless functions.
+#### Option A: 1-Click via Render Blueprint (Recommended)
+1. In your [Render Dashboard](https://dashboard.render.com), click **New +** → **Blueprint**.
+2. Connect your `reachinbox-scheduler` repository.
+3. Render reads `render.yaml` and will automatically provision:
+   - **PostgreSQL Database** (`reachinbox-db`)
+   - **Backend Web Service** (`reachinbox-backend`) running both the Express API and the BullMQ worker
+4. Provide the requested environment values:
+   - `FRONTEND_URL`: your deployed Vercel domain (e.g. `https://reachinbox-scheduler-xxx.vercel.app`)
+   - `REDIS_URL`: your Redis instance URL (e.g. free from [Upstash](https://upstash.com) or Render Key-Value)
+   - `ENCRYPTION_KEY`: 64-character hex key (generate with `openssl rand -hex 32`)
+5. Click **Apply**.
 
-**Required Cloud Services:**
-- **Postgres:** Hosted on Supabase, Neon, or Render PostgreSQL.
-- **Redis:** Hosted on Upstash, Redis Cloud, or Aiven (`appendonly yes`, `noeviction`).
-- **Elasticsearch:** Hosted on Elastic Cloud or Bonsai.
-
-**Backend Environment Variables:**
-- Set `FRONTEND_URL` to your Vercel deployment URL (e.g. `https://reachinbox-scheduler.vercel.app`).
-- Set `DATABASE_URL`, `REDIS_URL`, `ELASTICSEARCH_NODE`, `ENCRYPTION_KEY`, and `SESSION_SECRET`.
+#### Option B: Manual Web Service on Render
+If setting up manually:
+- **Environment:** Node
+- **Root Directory:** `backend`
+- **Build Command:** `npm install && npx prisma generate && npm run build && npx prisma migrate deploy`
+- **Start Command:** `npm run start:all` *(runs both Express API + BullMQ Worker in a single service)*
+- **Health Check Path:** `/health`
+- **Environment Variables:**
+  - `NODE_ENV`: `production`
+  - `FRONTEND_URL`: `https://your-vercel-app.vercel.app`
+  - `DATABASE_URL`: Your PostgreSQL connection string
+  - `REDIS_URL`: Your Redis connection string
+  - `ELASTIC_URL`: `http://localhost:9200` (or external elasticsearch)
+  - `SESSION_SECRET`: Random 32+ character string
+  - `ENCRYPTION_KEY`: 64 hex characters (`openssl rand -hex 32`)
+  - `WORKER_CONCURRENCY`: `5`
+  - `MIN_DELAY_BETWEEN_EMAILS_MS`: `2000`
+  - `MAX_EMAILS_PER_HOUR_PER_SENDER`: `100`
+  - `MAX_SEND_ATTEMPTS`: `3`
+  - `BULL_BOARD_USER`: `admin`
+  - `BULL_BOARD_PASS`: `your-secure-password`

@@ -1,0 +1,55 @@
+services:
+  # ReachInbox Full Backend (API Server + BullMQ Worker)
+  - type: web
+    name: reachinbox-backend
+    runtime: node
+    plan: free
+    region: oregon
+    rootDir: backend
+    buildCommand: npm install && npx prisma generate && npm run build && npx prisma migrate deploy
+    startCommand: npm run start:all
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: FRONTEND_URL
+        sync: false # Set to your Vercel URL, e.g. https://reachinbox-scheduler-xxx.vercel.app
+      - key: DATABASE_URL
+        fromDatabase:
+          name: reachinbox-db
+          property: connectionString
+      - key: REDIS_URL
+        sync: false # Set to your Redis connection string (e.g. from Upstash or Render Key-Value)
+      - key: ELASTIC_URL
+        value: http://localhost:9200
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: ENCRYPTION_KEY
+        sync: false # 64 hex chars (generated via: openssl rand -hex 32)
+      - key: WORKER_CONCURRENCY
+        value: "5"
+      - key: MIN_DELAY_BETWEEN_EMAILS_MS
+        value: "2000"
+      - key: MAX_EMAILS_PER_HOUR_PER_SENDER
+        value: "100"
+      - key: MAX_SEND_ATTEMPTS
+        value: "3"
+      - key: CLAIM_TIMEOUT_MS
+        value: "120000"
+      - key: GLOBAL_LIMIT_PER_SEC
+        value: "50"
+      - key: MAX_LEADS_PER_REQUEST
+        value: "10000"
+      - key: BULL_BOARD_USER
+        value: admin
+      - key: BULL_BOARD_PASS
+        generateValue: true
+
+databases:
+  - name: reachinbox-db
+    plan: free
+    region: oregon
+    databaseName: scheduler
+    user: app
