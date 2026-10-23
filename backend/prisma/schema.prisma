@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String            @id @default(uuid())
+  googleId  String            @unique
+  email     String            @unique
+  name      String
+  avatarUrl String?
+  createdAt DateTime          @default(now())
+  campaigns Campaign[]
+  slack     SlackIntegration?
+}
+
+model Sender {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  smtpHost String
+  smtpPort Int
+  smtpUser String
+  smtpPass String // AES-256-GCM encrypted
+  active   Boolean @default(true)
+  emails   Email[]
+}
+
+model Campaign {
+  id          String   @id @default(uuid())
+  userId      String
+  subject     String
+  body        String
+  startTime   DateTime
+  delayMs     Int
+  hourlyLimit Int
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id])
+  emails      Email[]
+}
+
+model Email {
+  id          String      @id @default(uuid())
+  campaignId  String
+  userId      String
+  senderId    String
+  toEmail     String
+  subject     String
+  body        String
+  status      EmailStatus @default(SCHEDULED)
+  scheduledAt DateTime
+  claimedAt   DateTime?
+  sentAt      DateTime?
+  attempts    Int         @default(0)
+  error       String?
+  previewUrl  String?
+  messageId   String?
+  updatedAt   DateTime    @updatedAt
+  campaign    Campaign    @relation(fields: [campaignId], references: [id])
+  sender      Sender      @relation(fields: [senderId], references: [id])
+
+  @@index([status, scheduledAt])
+  @@index([userId, status])
+  @@unique([campaignId, toEmail])
+}
+
+enum EmailStatus {
+  SCHEDULED
+  SENDING
+  SENT
+  FAILED
+}
+
+model SlackIntegration {
+  id         String  @id @default(uuid())
+  userId     String  @unique
+  webhookUrl String // AES-256-GCM encrypted
+  channel    String?
+  teamName   String?
+  user       User    @relation(fields: [userId], references: [id])
+}
